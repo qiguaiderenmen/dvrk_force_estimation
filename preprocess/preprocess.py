@@ -11,7 +11,7 @@ all_jaw = np.array([])
 
 split = sys.argv[1]
 
-path = join('..', 'simon_trocar_feb_27', split)
+path = join(split)
 
 joint_path = join(path, 'joints')
 jacobian_path = join(path, 'jacobian')

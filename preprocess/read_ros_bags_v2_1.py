@@ -42,9 +42,12 @@ class RosbagParser():
         fsr1_timestamps = []
         fsr1 = []
 
+        cp = []
+        cp_timestamps = []
+
 
         print("Processing " + file_name)
-        joint_msg = bag.read_messages(topics=['/PSM1/measured_js'])
+        joint_msg = bag.read_messages(topics=['/PSM3/measured_js'])
         for topic, msg, t in joint_msg:
             joint_timestamps.append(t.secs+t.nsecs*10**-9)
 
@@ -57,12 +60,12 @@ class RosbagParser():
             # handles effort for six joints
             joint_effort.append(list(msg.effort))
 
-        jacobian_spatial = bag.read_messages(topics=['/PSM1/spatial/jacobian'])
+        jacobian_spatial = bag.read_messages(topics=['/PSM3/spatial/jacobian'])
         for topic, msg, t in jacobian_spatial:
             jacobian_timestamps.append(t.secs+t.nsecs*10**-9)
             jacobian.append(list(msg.data))
 
-        jaw_msg = bag.read_messages(topics=['/PSM1/jaw/measured_js'])
+        jaw_msg = bag.read_messages(topics=['/PSM3/jaw/measured_js'])
         for topic, msg, t in jaw_msg:
             jaw_timestamps.append(t.secs+t.nsecs*10**-9)
             jaw.append([msg.position, msg.velocity, msg.effort])
@@ -77,6 +80,18 @@ class RosbagParser():
             t_y = msg.wrench.torque.y
             t_z = msg.wrench.torque.z
             force_sensor.append([x,y,z,t_x,t_y,t_z])
+
+        cartesian = bag.read_messages(topics=['/PSM3/measured_cp'])
+        for topic, msg, t in cartesian:
+            cp_timestamps.append(t.secs+t.nsecs*10**-9)
+            x = msg.pose.position.x
+            y = msg.pose.position.y
+            z = msg.pose.position.z # the sensor is probably most accurate in the z direction
+            t_w = msg.pose.orientation.w
+            t_x = msg.pose.orientation.x
+            t_y = msg.pose.orientation.y
+            t_z = msg.pose.orientation.z
+            cp.append([x,y,z,t_w,t_x,t_y,t_z])
 
         # fsr0_msg = bag.read_messages(topics=['/FSR0'])
         # for topic, msg, t in fsr0_msg:
@@ -94,6 +109,7 @@ class RosbagParser():
         print("Processed state joint current: count: {}".format(len(joint_timestamps)))
         print("Processed state jaw current: count: {}".format(len(jaw_timestamps)))
         print("Processed Jacobian: count: {}".format(len(jacobian)))
+        print("Processed cp: count: {}".format(len(cp_timestamps)))
         # print("Processed FSR0: count: {}".format(len(fsr0)))
         # print("Processed FSR1: count: {}".format(len(fsr1)))
         
@@ -102,12 +118,13 @@ class RosbagParser():
             joint_path.mkdir(mode=0o777, parents=False)
         except OSError:
             print("Joints path exists")
-            
-        try:
-            jacobian_path = Path(self.output) / "jacobian"
-            jacobian_path.mkdir(mode=0o777, parents=False)
-        except OSError:
-            print("Jacobian path exists")
+
+        if len(jacobian) > 0:    
+            try:
+                jacobian_path = Path(self.output) / "jacobian"
+                jacobian_path.mkdir(mode=0o777, parents=False)
+            except OSError:
+                print("Jacobian path exists")
             
         if len(force_sensor) > 0:
             try:
@@ -115,6 +132,13 @@ class RosbagParser():
                 sensor_path.mkdir(mode=0o777, parents=False)
             except OSError:
                 print("Sensor path exists")
+
+        if len(cp) > 0:
+            try:
+                cp_path = Path(self.output) / "cp"
+                cp_path.mkdir(mode=0o777, parents=False)
+            except OSError:
+                print("Cp path exists")
                         
         if len(jaw) > 0:
             try:
@@ -148,6 +172,11 @@ class RosbagParser():
             force_sensor = np.column_stack((force_sensor_timestamps,force_sensor))
         else:
             force_sensor = None
+        if len(cp) > 0:
+            cp_timestamps = np.array(cp_timestamps) - start_time
+            cp = np.column_stack((cp_timestamps,cp))
+        else:
+            cp = None
             
         if len(jaw) > 0:
             jaw_timestamps = np.array(jaw_timestamps) - start_time
@@ -166,7 +195,8 @@ class RosbagParser():
             
         file_name = self.prefix + str(self.index)        
         np.savetxt(self.output + "joints/" + file_name + ".csv", joints, delimiter=',')
-        np.savetxt(self.output + "jacobian/" + file_name + ".csv", jacobian, delimiter=',')
+        if len(jacobian) > 0:
+            np.savetxt(self.output + "jacobian/" + file_name + ".csv", jacobian, delimiter=',')
         if force_sensor is not None:
             np.savetxt(self.output + "sensor/" + file_name + ".csv", force_sensor, delimiter=',')
         if len(jaw) > 0:
@@ -175,6 +205,8 @@ class RosbagParser():
             np.savetxt(self.output + "fsr0/" + file_name + ".csv", fsr0, delimiter=',')
         if len(fsr1) > 0:
             np.savetxt(self.output + "fsr1/" + file_name + ".csv", fsr0, delimiter=',')
+        if len(cp) > 0:
+            np.savetxt(self.output + "cp/" + file_name + ".csv", jaw, delimiter=',')
         print("Wrote out " + file_name)
         print("")
         
