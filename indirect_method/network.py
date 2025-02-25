@@ -55,7 +55,7 @@ class trocarNetwork(nn.Module):
 
 # Vaguely inspired by LSTM from https://github.com/BerkeleyAutomation/dvrkCalibration/blob/cec2b8096e3a891c4dcdb09b3161e2a407fee0ee/experiment/3_training/modeling/models.py
 class torqueLstmNetwork(nn.Module):
-    def __init__(self, batch_size, device, joints=6, hidden_dim=256, num_layers=1, is_train=False):
+    def __init__(self, batch_size, device, joints=6, hidden_dim=512, num_layers=1, is_train=False):
         super(torqueLstmNetwork, self).__init__()
         self.num_layers = num_layers
         self.hidden_dim = hidden_dim
